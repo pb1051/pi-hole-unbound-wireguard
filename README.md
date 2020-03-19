@@ -129,18 +129,8 @@ Host *
 ```
 Now once again, SSH into your Raspberry Pi using the Terminal application by typing `ssh pi@192.168.x.x` where `192.168.x.x` is the static IP address of your Raspberry Pi, and you shouldn’t have to enter a password again from this device! Repeat these steps on other devices to generate and share their SSH key(s) with the Raspberry Pi.
 
-### Optional: Additional Raspbian Configuration
-Here are some additional steps I prefer to take upon setting up my Raspberry Pi. First, open the Configuration Tool via your SSH session:
-```
-sudo raspi-config
-```
-![Raspberry Pi Localisation Options](screenshots/raspbian-localisation-options.png)
-+ Under **Network Options**, change the **Hostname** to something other than `raspberrypi` (most of the devices on my network are [named after Transformers](https://tfwiki.net/wiki/The_Transformers_(toyline))).
-+ Under **Localisation Options**, add to the **Locale** `en-us UTF8` and select it as the default locale (*do not* remove the default `en-gb UTF8` as it seems to cause issues)
-+ Under **Localisation Options**, change the timezone to match yours
-
-### Update Raspbian and Packages
-Once you've got everything up and running, you'll want to [update all the Raspbian packages and upgrade any that need it](https://www.raspberrypi.org/documentation/raspbian/updating.md) using [APT (Advanced Packaging Tool)](https://wiki.debian.org/Apt) by running:
+### Update Packages
+Once you've got everything up and running, you'll want to [update all the packages and upgrade any that need it] using [APT (Advanced Packaging Tool)](https://wiki.debian.org/Apt) by running:
 ```
 sudo apt update
 ```
@@ -149,77 +139,6 @@ to update packages and then:
 sudo apt-get upgrade -y
 ```
 to upgrade any packages you have installed to their latest versions. This may take a while, so you may want to go grab a coffee, beer, tea...
-
-**Note**: If at any point during an `apt update` your package cache file is corrupted, remove your apt lists and refresh them using:
-```
-sudo rm -r /var/lib/apt/lists/
-sudo mkdir -p /var/lib/apt/lists/partial
-sudo apt-get update
-```
-
-## Backup and Restore a Raspberry Pi
-Throughout the process of setting things up, you may want to have a backup of your Raspberry Pi so you don’t have to start from scratch if you make a mistake like I have (several times). You may even want to clone your Raspberry Pi after each successful step so you can return to it if the next step goes wrong. For instance, I was sure to create a backup of my Raspberry Pi after initial setup, after I had Pi-Hole working, after I added Unbound, and after I got WireGuard setup. That way if I made any changes that broke my setup, I could always revert the previous working installation.
-
-### Backup the Raspberry Pi SD Card
-There are many ways to do this, but if you're on a Mac there is a very simple (and free) solution. You'll want to download the [ApplePi-Baker](https://www.tweaking4all.com/hardware/raspberry-pi/applepi-baker-v2/) app for macOS, which handles backing up your Raspberry Pi's SD card and can restore from several different formats as well.
-![ApplePi-Baker macOS App](screenshots/applepi-baker.png)
-At any point you want to backup your Raspberry Pi's configuration, first shutdown the device with:
-```
-sudo halt
-```
-or the more verbose:
-```
-sudo shutdown -h now
-```
-and then unplug your Rasbperry Pi (or get a [Pi Switch](https://amzn.to/2s7axRP) to make life easier). Remove the SD card from the Raspberry Pi and insert into a supported SD card reader (like the [Anker 2-in-1 card reader](https://amzn.to/2OaNBd1) I mentioned earlier), and connect to your Mac.
-
-When you open the ApplePi-Baker app, you should be able to select the SD card from the **Select a Disk** options (make sure you select the right disk), then choose the **Backup** option. In the file choose window, select **IMG** from the Format selections at the bottom of the window, and then give the backup file a name. This should take some time, be prepared to wait.
-![ApplePi-Baker Backup Process](screenshots/applepi-baker-backup-process.png)
-**Note**: The IMG format allows ApplePi-Baker to shrink the Linux partition on backup and expand it on restore, saving you from having to backup the entire size of the SD card rather than just the actual contents.
-
-#### Using the macOS Terminal
-Another way to backup your SD card on a Mac is to open Terminal and type:
-```
-diskutil list
-```
-to see a list of drives attached to your Mac. To create a Disk Image of the SD card:
-```
-sudo dd if=/dev/rdisk2 of=~/RaspberryPiBackup.dmg
-```
-where `/dev/rdisk2` is the path to your SD card’s disk (with an added `r`) and `~/RaspberryPiBackup.dmg` is the path and filename on your Mac to save the Disk Image. Enter your Mac user’s password when prompted. This may take a while depending on the size of your SD card and what you have installed on it.
-
-**Note**: If you see any input/output errors, try using Disk Utility instead.
-
-#### Using the macOS Disk Utility
-Open the macOS Disk Utility application, and choose View > Show All Devices. Right click on the device name of the SD card (not the individual partition(s)!) and choose the **Image from ‘DEVICE NAME’** option. Give the file a name and choose a location to save it. Choose the DVD/CD master option for Format, and no Encryption. Disk Utility will create a .CDR file with your SD card’s files.
-
-**Note**: Both the Disk Utility and Terminal methods failed for me, both creating input/output errors. Maybe it was my SD card, or my card reader, but then using ApplePi-Baker gave me no issues, so I didn't bother to investigate further.
-
-### Restoring a Raspberry Pi from Backup
-If you’ve made a backup of your Raspberry Pi’s SD card previously, you can restore it any time and overrite your current configuration. Using the ApplePi-Baker app on macOS, this is a simple task.
-
-First, shutdown your Raspberry Pi:
-```
-sudo halt
-```
-and remove the SD card from your Raspberry Pi. Using a supported SD card reader, insert the SD card from your Raspberry Pi into your Mac. Launch the ApplePi-Baker app and select the correct SD card disk, then choose the **Restore** option. ApplePi-Baker will expand the backup file and overrite the complete contents of your SD card with the backup file's contents, so make sure you really want to do this.
-
-#### Using the macOS Terminal to Restore
-You can also use the macOS Terminal application to this by typing:
-```
-diskutil list
-```
-to see a list of drives attached to your Mac. You'll need to unmount the SD card to proceed (your Mac can still see the files, but you won't see the mounted disk(s) anymore):
-```
-diskutil unmountDisk /dev/disk2
-```
-where `/dev/disk2` is the path to your SD card’s disk. Restore the SD card from backup using:
-```
-sudo dd if=~/RaspberryPiBackup.dmg of=/dev/disk2
-```
-where `/dev/disk2` is the path to your SD card’s disk and `~/RaspberryPiBackup.dmg` is the path and filename on your Mac to save the Disk Image. This may take a while depending on the size of your SD card backup
-
-**Note**: If you backed up the SD card as a .CDR, you can rename it to .ISO and restore it to any SD card with the free [Etcher application](https://www.balena.io/etcher/) for macOS.
 
 ## Setting Up Pi-Hole
 [Pi-Hole](https://pi-hole.net) provides ad-blocking at the network level, meaning you not only stop ads from making it to any of the devices on your network, but you also block the unnecessary network requests for those ads and thus reduce bandwidth usage. Pi-Hole pairs nicely with a VPN (Virtual Private Network) so that you can connect remotely and still take advantage of ad-blocking from anywhere outside your network.
